@@ -49,11 +49,10 @@ def generate_teacher_data(num_examples=10, output_file="teacher_data_test.jsonl"
         print("✓ Tinker client initialized")
 
         # Create sampling client for the teacher model
-        # Note: Using Qwen2.5-7B for teacher (larger models don't support sampling in Tinker)
-        # For production, you'd train from better teacher, but this demonstrates the technique
-        print("  Creating sampling client for Qwen/Qwen2.5-7B...")
+        # Using Qwen3-30B-A3B which supports sampling (per tinker-cookbook)
+        print("  Creating sampling client for Qwen/Qwen3-30B-A3B...")
         sampling_client = client.create_sampling_client(
-            base_model="Qwen/Qwen2.5-7B"
+            base_model="Qwen/Qwen3-30B-A3B"
         )
         print("  ✓ Sampling client created")
 

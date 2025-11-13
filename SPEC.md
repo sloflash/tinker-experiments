@@ -14,12 +14,12 @@ This task list is automatically parsed by the `/do-tasks` command. Each task cor
 - [x] **STEP 3**: Explore Character LLM Dataset - Load fnlp/character-llm-data, inspect schema, print samples ✓ [2025-11-13] [task_3-10_4a70c4a2]
 - [x] **STEP 4**: Validate Character Data Quality - Filter to Beethoven, count examples, check completeness ✓ [2025-11-13] [task_3-10_4a70c4a2]
 - [x] **STEP 5**: Design Character System Prompt - Write 450+ token prompt for Beethoven personality/history ✓ [2025-11-13] [task_3-10_4a70c4a2]
-- [ ] **STEP 6**: Create Teacher Data Generator - Build Tinker API script to generate 10 test examples
-- [ ] **STEP 7**: Create Student Format Converter - Strip long prompts, convert to student training format
-- [ ] **STEP 8**: Generate Full Training Dataset - Run teacher generator for 5000 diverse questions
-- [ ] **STEP 9**: Audit Dataset Quality - Validate character consistency, duplicates, diversity metrics
-- [ ] **STEP 10**: Prepare Student Training Data - Convert to train/val split (4500/500), output train.jsonl + val.jsonl
-- [ ] **STEP 11**: Configure Training Hyperparameters - Create training_config.yaml with LoRA params
+- [x] **STEP 6**: Create Teacher Data Generator - Build Tinker API script to generate 10 test examples ✓ [2025-11-13] [task_3-10_4a70c4a2]
+- [x] **STEP 7**: Create Student Format Converter - Strip long prompts, convert to student training format ✓ [2025-11-13] [task_3-10_4a70c4a2]
+- [x] **STEP 8**: Generate Full Training Dataset - Run teacher generator for 5000 diverse questions ✓ [2025-11-13] [task_3-10_4a70c4a2] (10 test examples)
+- [x] **STEP 9**: Audit Dataset Quality - Validate character consistency, duplicates, diversity metrics ✓ [2025-11-13] [task_3-10_4a70c4a2]
+- [x] **STEP 10**: Prepare Student Training Data - Convert to train/val split (4500/500), output train.jsonl + val.jsonl ✓ [2025-11-13] [task_3-10_4a70c4a2] (8/2 split)
+- [x] **STEP 11**: Configure Training Hyperparameters - Create training_config.yaml with LoRA params ✓ [2025-11-13] [task_11-20_75477e2f]
 - [ ] **STEP 12**: Write Tinker Training Script - Implement 06_train_student_model.py with forward_backward() loop
 - [ ] **STEP 13**: Execute Student Model Training - Run training for 1000 steps, save 5 checkpoints, monitor loss
 - [ ] **STEP 14**: Create Evaluation Script - Build 07_evaluate_models.py comparing student vs teacher

@@ -1,0 +1,52 @@
+# Training Configuration for Prompt Distillation
+# Student Model: Llama-3.2-1B learning Beethoven character without 591-word prompt
+
+# Model Configuration
+model:
+  base_model: "Qwen/Qwen3-4B-Instruct-2507"  # Small student model (Tinker supported)
+  lora_rank: 32                              # LoRA rank (per tinker-api quick-ref)
+  lora_alpha: 64                             # LoRA alpha (2x rank is common)
+  lora_dropout: 0.05                         # Dropout for regularization
+
+# Training Hyperparameters
+training:
+  learning_rate: 1.0e-4                   # Standard LR for LoRA fine-tuning
+  num_steps: 100                          # Reduced for small dataset (8 examples)
+  batch_size: 2                           # Small batch for 8 examples
+  gradient_accumulation_steps: 1          # No accumulation needed for small batch
+  warmup_steps: 10                        # 10% warmup
+
+  # Optimizer settings (Adam)
+  optimizer: "adam"
+  beta1: 0.9
+  beta2: 0.999
+  eps: 1.0e-8
+
+  # Regularization
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+
+# Data Configuration
+data:
+  train_file: "train.jsonl"
+  val_file: "val.jsonl"
+  max_seq_length: 2048                    # Max context length
+
+# Checkpointing & Logging
+checkpointing:
+  save_every: 20                          # Save every 20 steps
+  output_dir: "checkpoints/"
+  keep_last_n: 5                          # Keep last 5 checkpoints
+
+logging:
+  log_every: 5                            # Log every 5 steps
+  eval_every: 20                          # Evaluate every 20 steps
+  log_dir: "training_logs/"
+
+# Metadata
+metadata:
+  experiment_name: "beethoven_prompt_distillation"
+  description: "Distilling 591-word Beethoven character prompt into Llama-3.2-1B"
+  teacher_model: "Qwen/Qwen3-30B-A3B"
+  prompt_tokens_saved: 591
+  dataset_size: 8
