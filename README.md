@@ -102,6 +102,10 @@ python src/08_calculate_metrics.py
 | Cost/1M queries | $3,093 | $53.25 | 98.3% |
 | ROI at 1M queries | - | 3,040x | - |
 
+### Actual Training Cost
+![Tinker API Usage](images/tinker-cost-proof.png)
+*Actual Tinker API usage showing minimal spend (~$1) for the entire research project*
+
 ### Technical Achievements
 - **Async optimization**: 31x speedup (7.8 hours → 15 minutes)
 - **Quality retention**: 89% semantic similarity
