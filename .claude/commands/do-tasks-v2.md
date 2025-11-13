@@ -1,13 +1,18 @@
-# Smart Task Executor Command
+# Smart Task Executor Command V2
 
-## Execution Model: Sequential Main + Parallel Support
+## Execution Model: Sequential Main + Parallel Support with Full Logging
 
 ### Core Architecture
 ```
-[PARALLEL PRE-FLIGHT (30s)] → [SEQUENTIAL MAIN TASK] → [PARALLEL POST-VALIDATION (30s)] → [UPDATE SPEC.md ✓]
-                                        ↓
-                            [BACKGROUND MONITORING (non-blocking)]
+[GENERATE TASK ID] → [PARALLEL PRE-FLIGHT (30s)] → [TEST FIRST] → [SEQUENTIAL MAIN] → [PARALLEL POST] → [UPDATE SPEC.md ✓]
+                                                          ↓                                              (with task_id)
+                                              [LOG ALL TO .task_execution.log]
+                                                          ↓
+                                            [BACKGROUND MONITORING (non-blocking)]
 ```
+
+### Built-in Task Logger
+All operations are logged with unique task IDs to `.task_execution.log`. Task IDs are added to SPEC.md for easy log searching.
 
 ---
 
@@ -154,36 +159,67 @@ step_13_training:
 def execute_step(step_number):
     step_def = load_step_definition(step_number)
 
-    # PHASE 1: Pre-flight checks (parallel)
+    # PHASE 0: Generate unique task ID and start logging
+    task_id = f"task_{step_number}_{uuid.uuid4().hex[:8]}"
+    log_entry = {
+        "task_id": task_id,
+        "step": step_number,
+        "timestamp": datetime.now().isoformat(),
+        "status": "STARTED"
+    }
+    with open(".task_execution.log", 'a') as f:
+        f.write(json.dumps(log_entry) + '\n')
+
+    # PHASE 1: Pre-flight checks (parallel) - ALL LOGGED
     pre_results = run_parallel_tasks(
         tasks=step_def.pre_flight,
         timeout=30,
-        fail_fast=True
+        fail_fast=True,
+        task_id=task_id  # Pass task_id for logging
     )
 
-    if not all_success(pre_results):
-        return handle_pre_flight_failure(pre_results)
+    # Log pre-flight results
+    log_phase(task_id, "PRE-FLIGHT", pre_results)
 
-    # PHASE 2: Main execution (sequential with agent/skills)
+    if not all_success(pre_results):
+        return handle_pre_flight_failure(pre_results, task_id)
+
+    # PHASE 2: Main execution WITH TESTING FIRST
+    # IMPORTANT: Test before assuming success!
+    test_prompt = f"{step_def.main.objective}. FIRST run a test with minimal data to ensure the script works!"
+
     if step_def.main.mode == "background":
-        # Start in background for long-running tasks
-        process_id = start_background_task_with_agent(
-            agent="tinker-executor",  # From .claude/agents/AGENT.md
-            skills=step_def.main.skills,  # From .claude/skills/
-            task=step_def.main
-        )
-        register_background_monitor(process_id, step_def.background)
+        # Test first with small sample
+        test_result = test_script_minimal(step_def.main.script, task_id)
+
+        if test_result.success:
+            # Start in background for long-running tasks
+            process_id = start_background_task_with_agent(
+                agent="tinker-executor",  # From .claude/agents/AGENT.md
+                skills=step_def.main.skills,  # From .claude/skills/
+                task=step_def.main,
+                task_id=task_id  # Pass for logging
+            )
+            register_background_monitor(process_id, step_def.background, task_id)
+        else:
+            log_error(task_id, "Test failed, not starting main task")
+            return handle_test_failure(test_result, task_id)
     else:
         # Block until complete for normal tasks
         main_result = execute_main_task_with_agent(
             agent="tinker-executor",  # From .claude/agents/AGENT.md
             skills=step_def.main.skills or ["tinker-api"],
             task=step_def.main,
-            timeout=step_def.main.timeout
+            timeout=step_def.main.timeout,
+            test_first=True,  # Always test first!
+            task_id=task_id  # Pass for logging
         )
 
+        # Log main execution results
+        log_phase(task_id, "MAIN", main_result)
+
         if not main_result.success:
-            return handle_main_failure(main_result)
+            return handle_main_failure(main_result, task_id)
 
     # PHASE 3: Post-validation (parallel)
     post_results = run_parallel_tasks(
@@ -197,10 +233,13 @@ def execute_step(step_number):
         for monitor in step_def.background:
             schedule_periodic_check(monitor)
 
-    # PHASE 5: Update SPEC.md to mark task complete
-    update_spec_md(step_number, status="complete")
+    # PHASE 5: Update SPEC.md with task ID for searching
+    update_spec_md(step_number, task_id=task_id, status="complete")
 
-    return StepResult(success=True, next_step=step_number + 1)
+    # Log completion
+    log_phase(task_id, "COMPLETED", {"step": step_number, "success": True})
+
+    return StepResult(success=True, task_id=task_id, next_step=step_number + 1)
 ```
 
 ---
@@ -306,17 +345,23 @@ All main tasks use the **tinker-executor** agent from `.claude/agents/AGENT.md`:
 - Has knowledge of prompt distillation workflows
 - Handles errors specific to training/generation tasks
 
-### Skills Integration
+### Skills Integration (CRITICAL)
+
+**The project MUST always rely on `.claude/skills/tinker-api/` to avoid going off track!**
+
 Tasks leverage skills from `.claude/skills/`:
 
-**Primary Skills:**
-- `tinker-api`: All Tinker-specific operations (training, sampling, evaluation)
-- `document-skills`: For creating documentation and reports
+**PRIMARY (Required for ALL steps):**
+- `tinker-api`: **MANDATORY** - Contains correct Tinker API usage patterns, examples, and error handling
+  - Location: `.claude/skills/tinker-api/`
+  - Files: `SKILL.md`, `examples.md`, `quick-reference.md`
+  - Use for: ALL Tinker operations (training, sampling, evaluation, data generation)
 
-**Supporting Skills:**
-- `skill-creator`: When creating custom validation scripts
-- `mcp-builder`: If integrating with MCP servers
-- `webapp-testing`: For testing interactive demos
+**Supporting (Optional):**
+- `document-skills`: For creating documentation and reports
+- Other skills only when explicitly needed
+
+**IMPORTANT:** Every main task execution MUST include the tinker-api skill to ensure correct API usage!
 
 ### Execution Pattern
 
@@ -343,23 +388,36 @@ This ensures forward progress while maintaining quality.
 
 ---
 
-## Command Integration
+## Command Integration with Testing & Logging
 
 ```bash
 # In your current terminal
 /do-tasks-v2 --step 1
 
 # Output:
-[PRE] ✓ Environment verified (3s)
-[PRE] ✓ Python 3.11 found (2s)
-[PRE] ✓ Tinker imported (4s)
+[TASK ID] Generated: task_1_a2b3c4d5
+
+[PRE] ✓ Environment verified (3s) - logged
+[PRE] ✓ Python 3.11 found (2s) - logged
+[PRE] ✓ Tinker imported (4s) - logged
+
+[TEST] Running minimal test first...
+[TEST] ✓ Test passed with 2 examples
+
 [MAIN] Executing: Verify Tinker API authentication...
+[MAIN] Using: tinker-api skill (MANDATORY)
 [MAIN] ✓ Authentication successful (12s)
-[POST] ✓ Connection test passed (5s)
-[POST] ✓ Logged to .task_log (1s)
+[MAIN] All outputs logged with ID: task_1_a2b3c4d5
+
+[POST] ✓ Connection test passed (5s) - logged
+[POST] ✓ Results validated (1s) - logged
+
 [SPEC] ✓ Updated SPEC.md - Step 1 marked complete
+       Added task_id: task_1_a2b3c4d5 for log searching
 
 Step 1 complete in 27s. Ready for step 2.
+
+To view logs: grep "task_1_a2b3c4d5" .task_execution.log
 ```
 
 ## SPEC.md Update Mechanism

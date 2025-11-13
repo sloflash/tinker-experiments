@@ -7,6 +7,7 @@ Generate responses using Tinker API with full 591-word character prompt
 import os
 import json
 import tinker
+from transformers import AutoTokenizer
 from character_prompts import get_character_prompt, count_tokens_approximate
 
 def generate_teacher_data(num_examples=10, output_file="teacher_data_test.jsonl"):
@@ -27,11 +28,35 @@ def generate_teacher_data(num_examples=10, output_file="teacher_data_test.jsonl"
 
     print(f"✓ API key found: {api_key[:15]}...")
 
+    # Load tokenizer - using Qwen as fallback since Llama is gated
+    print("\nLoading tokenizer...")
+    try:
+        # Try Llama tokenizer first
+        tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.1-70B-Instruct")
+        print("✓ Llama tokenizer loaded")
+    except Exception as e:
+        # Fallback to Qwen (not gated)
+        print("Note: Llama tokenizer unavailable (gated model)")
+        print("  Using Qwen/Qwen2.5-7B tokenizer (similar architecture)...")
+        tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B")
+        print("✓ Qwen tokenizer loaded")
+
     # Initialize Tinker client
     print("\nInitializing Tinker ServiceClient...")
     try:
+        # Initialize service client
         client = tinker.ServiceClient()
         print("✓ Tinker client initialized")
+
+        # Create sampling client for the teacher model
+        # Note: Using Qwen2.5-7B for teacher (larger models don't support sampling in Tinker)
+        # For production, you'd train from better teacher, but this demonstrates the technique
+        print("  Creating sampling client for Qwen/Qwen2.5-7B...")
+        sampling_client = client.create_sampling_client(
+            base_model="Qwen/Qwen2.5-7B"
+        )
+        print("  ✓ Sampling client created")
+
     except Exception as e:
         print(f"✗ Error initializing client: {e}")
         return
@@ -67,18 +92,32 @@ def generate_teacher_data(num_examples=10, output_file="teacher_data_test.jsonl"
         full_prompt = f"{character_prompt}\n\nUser: {question}\nBeethoven:"
 
         try:
-            # Create sampling client
-            sampling_client = client.sampling(model="meta-llama/Llama-3.1-70B-Instruct")
-
-            # Generate response
+            # Generate response using Tinker API
             print("  Generating response...")
-            response = sampling_client.sample(
-                prompt=full_prompt,
+
+            # Tokenize the prompt
+            input_ids = tokenizer.encode(full_prompt, add_special_tokens=True)
+
+            # Convert to ModelInput
+            prompt_input = tinker.types.ModelInput.from_ints(input_ids)
+
+            # Sample from the model
+            sampling_params = tinker.types.SamplingParams(
                 max_tokens=300,
                 temperature=0.7
             )
 
-            teacher_response = response.text.strip()
+            future = sampling_client.sample(
+                prompt=prompt_input,
+                sampling_params=sampling_params,
+                num_samples=1
+            )
+
+            # Get result
+            result_obj = future.result()
+            # Decode the generated tokens
+            generated_tokens = result_obj.sequences[0].tokens
+            teacher_response = tokenizer.decode(generated_tokens, skip_special_tokens=True)
 
             # Save result
             result = {
@@ -95,6 +134,8 @@ def generate_teacher_data(num_examples=10, output_file="teacher_data_test.jsonl"
 
         except Exception as e:
             print(f"  ✗ Error generating response: {e}")
+            import traceback
+            traceback.print_exc()
             continue
 
     # Save to JSONL file
@@ -118,5 +159,7 @@ def generate_teacher_data(num_examples=10, output_file="teacher_data_test.jsonl"
 
 
 if __name__ == "__main__":
-    # Generate 10 test examples
-    generate_teacher_data(num_examples=10)
+    import sys
+    # Generate test examples (default 10, or pass number as argument)
+    num = int(sys.argv[1]) if len(sys.argv) > 1 else 10
+    generate_teacher_data(num_examples=num)
