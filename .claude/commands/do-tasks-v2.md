@@ -35,6 +35,8 @@ Quick checks that run simultaneously before main execution:
 
 ### 2. MAIN EXECUTION PHASE (Sequential, single subagent)
 The primary task that must complete before moving forward:
+- Uses tinker-executor agent from `.claude/agents/AGENT.md`
+- Leverages skills from `.claude/skills/` (especially tinker-api)
 - ONE focused objective
 - Clear success criteria
 - Timeout protection
@@ -84,7 +86,8 @@ step_1_setup_api:
       parallel: true
 
   main:
-    agent: "tinker-executor"
+    agent: "tinker-executor"  # Uses .claude/agents/AGENT.md
+    skills: ["tinker-api"]     # Uses .claude/skills/tinker-api/
     objective: "Verify Tinker API authentication"
     script: "01_test_auth.py"
     timeout: 300
@@ -118,7 +121,8 @@ step_13_training:
       parallel: true
 
   main:
-    agent: "tinker-executor"
+    agent: "tinker-executor"  # Uses .claude/agents/AGENT.md
+    skills: ["tinker-api"]     # Uses .claude/skills/tinker-api/
     objective: "Start model training"
     script: "06_train_student_model.py"
     mode: "background"  # Special mode for long-running
@@ -160,15 +164,21 @@ def execute_step(step_number):
     if not all_success(pre_results):
         return handle_pre_flight_failure(pre_results)
 
-    # PHASE 2: Main execution (sequential)
+    # PHASE 2: Main execution (sequential with agent/skills)
     if step_def.main.mode == "background":
         # Start in background for long-running tasks
-        process_id = start_background_task(step_def.main)
+        process_id = start_background_task_with_agent(
+            agent="tinker-executor",  # From .claude/agents/AGENT.md
+            skills=step_def.main.skills,  # From .claude/skills/
+            task=step_def.main
+        )
         register_background_monitor(process_id, step_def.background)
     else:
         # Block until complete for normal tasks
-        main_result = execute_main_task(
-            step_def.main,
+        main_result = execute_main_task_with_agent(
+            agent="tinker-executor",  # From .claude/agents/AGENT.md
+            skills=step_def.main.skills or ["tinker-api"],
+            task=step_def.main,
             timeout=step_def.main.timeout
         )
 
@@ -288,21 +298,45 @@ step_8_generate_data:
 
 ---
 
-## Implementation in do-tasks.md
+## Integration with Agents & Skills
+
+### Agent Usage
+All main tasks use the **tinker-executor** agent from `.claude/agents/AGENT.md`:
+- Configured specifically for Tinker API operations
+- Has knowledge of prompt distillation workflows
+- Handles errors specific to training/generation tasks
+
+### Skills Integration
+Tasks leverage skills from `.claude/skills/`:
+
+**Primary Skills:**
+- `tinker-api`: All Tinker-specific operations (training, sampling, evaluation)
+- `document-skills`: For creating documentation and reports
+
+**Supporting Skills:**
+- `skill-creator`: When creating custom validation scripts
+- `mcp-builder`: If integrating with MCP servers
+- `webapp-testing`: For testing interactive demos
+
+### Execution Pattern
 
 ```markdown
 When executing tasks:
 
 1. **Before each step**, run MAX 3 parallel pre-checks (30s timeout each)
-2. **For main execution**, use ONE subagent with clear objective
+2. **For main execution**, use tinker-executor agent with relevant skills
 3. **After completion**, run MAX 3 parallel validations (30s timeout each)
 4. **For long tasks** (training, generation), start in background and monitor
+5. **Always update SPEC.md** to mark tasks complete
 
-Time budgets:
-- Pre-flight: 30s total (parallel)
-- Main task: Variable (1min - 4hrs)
-- Validation: 30s total (parallel)
-- Monitoring: Non-blocking periodic
+Agent/Skills example:
+```python
+Task(
+    subagent_type="tinker-executor",
+    skills=["tinker-api", "document-skills"],
+    prompt="Execute Step 8: Generate 5000 training examples"
+)
+```
 
 This ensures forward progress while maintaining quality.
 ```

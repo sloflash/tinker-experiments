@@ -9,11 +9,11 @@ This task list is automatically parsed by the `/do-tasks` command. Each task cor
 
 ### Task Tracking
 
-- [ ] **STEP 1**: Setup Tinker API Access - Create account, obtain API key, set environment variable
-- [ ] **STEP 2**: Install Core Dependencies - Create requirements.txt, install packages, verify imports
-- [ ] **STEP 3**: Explore Character LLM Dataset - Load fnlp/character-llm-data, inspect schema, print samples
-- [ ] **STEP 4**: Validate Character Data Quality - Filter to Beethoven, count examples, check completeness
-- [ ] **STEP 5**: Design Character System Prompt - Write 450+ token prompt for Beethoven personality/history
+- [x] **STEP 1**: Setup Tinker API Access - Create account, obtain API key, set environment variable ✓ [2025-11-13]
+- [x] **STEP 2**: Install Core Dependencies - Create requirements.txt, install packages, verify imports ✓ [2025-11-13]
+- [x] **STEP 3**: Explore Character LLM Dataset - Load fnlp/character-llm-data, inspect schema, print samples ✓ [2025-11-13]
+- [x] **STEP 4**: Validate Character Data Quality - Filter to Beethoven, count examples, check completeness ✓ [2025-11-13]
+- [x] **STEP 5**: Design Character System Prompt - Write 450+ token prompt for Beethoven personality/history ✓ [2025-11-13]
 - [ ] **STEP 6**: Create Teacher Data Generator - Build Tinker API script to generate 10 test examples
 - [ ] **STEP 7**: Create Student Format Converter - Strip long prompts, convert to student training format
 - [ ] **STEP 8**: Generate Full Training Dataset - Run teacher generator for 5000 diverse questions

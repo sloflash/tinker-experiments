@@ -50,15 +50,21 @@ parallel_tasks = [
 ```
 
 ### 2. Main Execution Phase (Sequential)
-Execute ONE focused task:
+Execute ONE focused task using the tinker-executor agent:
 ```python
+# Use the configured agent from .claude/agents/AGENT.md
 if step.requires_long_running:
     # For training, large data generation
+    Task(subagent_type="tinker-executor",  # Uses .claude/agents/AGENT.md
+         prompt=step_objective,
+         skills=["tinker-api"])  # Uses .claude/skills/tinker-api
     start_background_task()
     register_monitors()
 else:
     # For setup, config, small operations
-    execute_blocking_task()
+    Task(subagent_type="tinker-executor",
+         prompt=step_objective,
+         skills=["tinker-api"])
 ```
 
 ### 3. Post-Validation Phase (Parallel, 30s max)
@@ -90,8 +96,9 @@ When you run `/do-tasks N`:
    - Verify environment ready
    - Test required connections
 3. **Main Task** (sequential):
-   - Use Task tool with subagent_type="general-purpose"
+   - Use Task tool with subagent_type="tinker-executor" (from .claude/agents/AGENT.md)
    - Single focused objective from SPEC.md
+   - Leverage relevant skills from .claude/skills/ (especially tinker-api)
    - For long tasks, start in background
 4. **Post-Validation** (parallel, 30s each):
    - Verify success criteria from SPEC.md
@@ -187,10 +194,24 @@ Background monitor active for data generation.
 
 Use these tools in combination:
 1. **Read**: Get step details from SPEC.md
-2. **Task**: Execute main operations with subagent
+2. **Task**: Execute main operations with tinker-executor agent
+   - Agent location: `.claude/agents/AGENT.md`
+   - Skills to use: `.claude/skills/tinker-api/` (for all Tinker-specific tasks)
+   - Other skills: Use as needed (document-skills, skill-creator, etc.)
 3. **Bash**: Run parallel pre-flight/post checks
 4. **Edit**: Update SPEC.md checkboxes to mark complete
 5. **Write**: Log progress to `.task_log`
+
+**Agent & Skills Integration:**
+```python
+# For main execution phase
+Task(
+    subagent_type="tinker-executor",  # From .claude/agents/AGENT.md
+    prompt=f"Execute Step {N}: {step_description}",
+    skills=["tinker-api", "document-skills"],  # From .claude/skills/
+    model="haiku"  # Use fast model for quick tasks
+)
+```
 
 **IMPORTANT**: Always update SPEC.md after completing each step so progress is visible!
 
