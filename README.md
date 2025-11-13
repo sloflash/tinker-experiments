@@ -39,6 +39,28 @@ tinker-experiments/
 - Python 3.8+
 - Dependencies: `tinker`, `datasets`, `transformers`, `torch`
 
+## Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/sloflash/tinker-experiments.git
+   cd tinker-experiments
+   ```
+
+2. **Configure API key**
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your Tinker API key
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Follow the implementation**
+   - See [SPEC.md](./SPEC.md) for the complete 20-step guide
+
 ## Expected Results
 
 | Metric | Target |
