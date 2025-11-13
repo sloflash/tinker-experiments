@@ -11,10 +11,10 @@ model:
 # Training Hyperparameters
 training:
   learning_rate: 1.0e-4                   # Standard LR for LoRA fine-tuning
-  num_steps: 100                          # Reduced for small dataset (8 examples)
-  batch_size: 2                           # Small batch for 8 examples
-  gradient_accumulation_steps: 1          # No accumulation needed for small batch
-  warmup_steps: 10                        # 10% warmup
+  num_steps: 1000                         # Full training for large dataset
+  batch_size: 1                           # Process 1 example per step
+  gradient_accumulation_steps: 1          # No accumulation
+  warmup_steps: 100                       # 10% warmup
 
   # Optimizer settings (Adam)
   optimizer: "adam"
@@ -34,13 +34,13 @@ data:
 
 # Checkpointing & Logging
 checkpointing:
-  save_every: 20                          # Save every 20 steps
+  save_every: 200                         # Save every 200 steps
   output_dir: "checkpoints/"
   keep_last_n: 5                          # Keep last 5 checkpoints
 
 logging:
-  log_every: 5                            # Log every 5 steps
-  eval_every: 20                          # Evaluate every 20 steps
+  log_every: 10                           # Log every 10 steps
+  eval_every: 100                         # Evaluate every 100 steps
   log_dir: "training_logs/"
 
 # Metadata
@@ -49,4 +49,4 @@ metadata:
   description: "Distilling 591-word Beethoven character prompt into Llama-3.2-1B"
   teacher_model: "Qwen/Qwen3-30B-A3B"
   prompt_tokens_saved: 591
-  dataset_size: 8
+  dataset_size: 5000

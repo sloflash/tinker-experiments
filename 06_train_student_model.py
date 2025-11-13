@@ -17,6 +17,13 @@ from transformers import AutoTokenizer
 import tinker
 from tinker import types
 
+# Load .env if exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 @dataclass
 class TrainingExample:
     """Simple training example structure for Tinker API"""
